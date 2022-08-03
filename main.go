@@ -20,7 +20,7 @@ type Sample struct {
 }
 
 var c = cors.New(cors.Options{
-	AllowedOrigins:   []string{"https://127.0.0.1:3001", "https://localhost:3001"},
+	AllowedOrigins:   []string{"http://127.0.0.1:5173", "http://localhost:5173"},
 	AllowedMethods:   []string{"GET", "PUT", "POST", "DELETE", "OPTIONS"},
 	AllowedHeaders:   []string{"Content-Type", "Authorization"},
 	AllowCredentials: true,
@@ -30,8 +30,8 @@ var c = cors.New(cors.Options{
 
 func main() {
 	router := gin.Default()
-	router.Use(c)
 	router.SetTrustedProxies([]string{"127.0.0.1"})
+	router.Use(c)
 	router.GET("/samples", getSamples)
 	//router.GET("/samples/:id", getSampleByID)
 	//router.POST("/samples", postSamples)
