@@ -2,6 +2,7 @@ package main
 
 import (
 	"net/http"
+	"path/filepath"
 	"time"
 
 	Models "sample/go-cms/models"
@@ -33,10 +34,39 @@ func main() {
 	router.SetTrustedProxies([]string{"127.0.0.1"})
 	router.Use(c)
 	router.GET("/samples", getSamples)
+
+	router.MaxMultipartMemory = 8 << 20 // 8 MiB
+	router.POST("/playground-upload", uploadFile)
+
 	//router.GET("/samples/:id", getSampleByID)
 	//router.POST("/samples", postSamples)
 
 	router.Run("localhost:8080")
+}
+
+func uploadFile(c *gin.Context) {
+	// Multipart form
+	form, err := c.MultipartForm()
+	if err != nil {
+		c.String(http.StatusBadRequest, "get form err: %s", err.Error())
+		return
+	}
+
+	files := form.File["files"]
+	//filenames := c.PostForm("filenames")
+	//fmt.Printf("filesnames: %v", filenames)
+
+	for _, file := range files {
+		filename := filepath.Base(file.Filename)
+		// check file exist before upload
+		if err := c.SaveUploadedFile(file, "./upload-images/"+filename); err != nil {
+			c.String(http.StatusBadRequest, "upload file err: %s", err.Error())
+			return
+		}
+	}
+
+	c.String(http.StatusOK,
+		"Uploaded successfully %d files with fields name=%s and email=%s.", len(files))
 }
 
 func getSamples(c *gin.Context) {
