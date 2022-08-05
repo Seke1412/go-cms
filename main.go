@@ -32,6 +32,9 @@ func main() {
 	router := gin.Default()
 	router.SetTrustedProxies([]string{"127.0.0.1"})
 	router.Use(c)
+
+	router.Static("/upload-images", "./upload-images")
+
 	router.GET("/samples", getSamples)
 
 	router.MaxMultipartMemory = 8 << 20 // 8 MiB
