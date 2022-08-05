@@ -71,8 +71,8 @@ func GetSamples() (samples []Sample, err error) {
 
 func (sample *Sample) Create() (err error) {
 	statement := `INSERT INTO "samples"
-		("title", "content", "photo", "createdAt", "updatedAt") 
-		values ($1, $2, $3, $4, $5, $6, now(), now()) returning id`
+		("title", "content", "photo", "created_at", "updated_at") 
+		values ($1, $2, $3, now(), now()) returning id`
 	stmt, err := DB.Prepare(statement)
 
 	defer stmt.Close()

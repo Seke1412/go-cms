@@ -3,9 +3,8 @@ package main
 import (
 	"net/http"
 	"path/filepath"
-	"time"
-
 	Models "sample/go-cms/models"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	cors "github.com/rs/cors/wrapper/gin"
@@ -37,15 +36,12 @@ func main() {
 
 	router.MaxMultipartMemory = 8 << 20 // 8 MiB
 	router.POST("/playground-upload", uploadFile)
-
-	//router.GET("/samples/:id", getSampleByID)
-	//router.POST("/samples", postSamples)
+	router.POST("/sample-upload", uploadForm)
 
 	router.Run("localhost:8080")
 }
 
-func uploadFile(c *gin.Context) {
-	// Multipart form
+func uploadForm(c *gin.Context) {
 	form, err := c.MultipartForm()
 	if err != nil {
 		c.String(http.StatusBadRequest, "get form err: %s", err.Error())
@@ -53,12 +49,44 @@ func uploadFile(c *gin.Context) {
 	}
 
 	files := form.File["files"]
-	//filenames := c.PostForm("filenames")
-	//fmt.Printf("filesnames: %v", filenames)
+	articleTitle := c.PostForm("articleTitle")
+	articleContent := c.PostForm("articleContent")
+	photoArrayAsString := ""
 
 	for _, file := range files {
 		filename := filepath.Base(file.Filename)
-		// check file exist before upload
+		relativeFilePath := "upload-images/" + filename
+		photoArrayAsString += relativeFilePath + ","
+		// TODO: check file exist before upload
+		if err := c.SaveUploadedFile(file, "./"+relativeFilePath); err != nil {
+			c.String(http.StatusBadRequest, "upload file err: %s", err.Error())
+			return
+		}
+	}
+
+	newSample := Models.Sample{
+		Title:   articleTitle,
+		Content: articleContent,
+		Photo:   photoArrayAsString,
+	}
+
+	newSample.Create()
+
+	c.String(http.StatusOK, "Success!")
+}
+
+func uploadFile(c *gin.Context) {
+	form, err := c.MultipartForm()
+	if err != nil {
+		c.String(http.StatusBadRequest, "get form err: %s", err.Error())
+		return
+	}
+
+	files := form.File["files"]
+
+	for _, file := range files {
+		filename := filepath.Base(file.Filename)
+		// TODO: check file exist before upload
 		if err := c.SaveUploadedFile(file, "./upload-images/"+filename); err != nil {
 			c.String(http.StatusBadRequest, "upload file err: %s", err.Error())
 			return
@@ -78,30 +106,3 @@ func getSamples(c *gin.Context) {
 	}
 
 }
-
-/*
-func getSampleByID(c *gin.Context) {
-	id := c.Param("id")
-
-	for _, a := range samples {
-		if a.ID == id {
-			c.IndentedJSON(http.StatusOK, a)
-			return
-		}
-	}
-
-	c.IndentedJSON(http.StatusNotFound, gin.H{"message": "sample not found"})
-}
-
-func postSamples(c *gin.Context) {
-	var newSample sample
-
-	if err := c.BindJSON(&newSample); err != nil {
-		return
-	}
-
-	// Add the new album to the slice.
-	samples = append(samples, newSample)
-	c.IndentedJSON(http.StatusCreated, newSample)
-}
-*/
