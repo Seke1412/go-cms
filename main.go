@@ -1,9 +1,11 @@
 package main
 
 import (
+	"fmt"
 	"net/http"
 	"path/filepath"
 	Models "sample/go-cms/models"
+	"strings"
 	"time"
 
 	"github.com/gin-gonic/gin"
@@ -36,31 +38,56 @@ func main() {
 	router.Static("/upload-images", "./upload-images")
 
 	router.GET("/samples", getSamples)
+	router.GET("/samples/:id", getSampleByID)
 
 	router.MaxMultipartMemory = 8 << 20 // 8 MiB
 	router.POST("/playground-upload", uploadFile)
 	router.POST("/sample-upload", uploadForm)
+	router.POST("/sample-edit/:id", editSample)
 
 	router.Run("localhost:8080")
 }
 
-func uploadForm(c *gin.Context) {
+func editSample(c *gin.Context) {
+	id := c.Param("id")
+	sample, err := Models.GetSample(id)
+	fmt.Printf("sample %v: ", sample)
+
 	form, err := c.MultipartForm()
+
 	if err != nil {
 		c.String(http.StatusBadRequest, "get form err: %s", err.Error())
 		return
 	}
 
 	files := form.File["files"]
-	articleTitle := c.PostForm("articleTitle")
-	articleContent := c.PostForm("articleContent")
+	title := c.PostForm("title")
+	content := c.PostForm("content")
+	remainUrls := c.PostForm("remain-urls")
 	photoArrayAsString := ""
+
+	if len(remainUrls) > 0 {
+		if strings.Contains(remainUrls, ",") {
+			urls := strings.Split(remainUrls, ",")
+			for i := 0; i < len(urls); i++ {
+				url := urls[i]
+				isValidUrl := strings.Contains(sample.Photo, url)
+				if isValidUrl {
+					photoArrayAsString += url + ","
+				}
+			}
+		} else {
+			photoArrayAsString += remainUrls + ","
+		}
+	}
 
 	for _, file := range files {
 		filename := filepath.Base(file.Filename)
 		relativeFilePath := "upload-images/" + filename
 		photoArrayAsString += relativeFilePath + ","
-		// TODO: check file exist before upload
+		// TODO:
+		// check file exist before upload
+		// sanitize file name before upload
 		if err := c.SaveUploadedFile(file, "./"+relativeFilePath); err != nil {
 			c.String(http.StatusBadRequest, "upload file err: %s", err.Error())
 			return
@@ -68,8 +95,65 @@ func uploadForm(c *gin.Context) {
 	}
 
 	newSample := Models.Sample{
-		Title:   articleTitle,
-		Content: articleContent,
+		Id:      id,
+		Title:   title,
+		Content: content,
+		Photo:   photoArrayAsString,
+	}
+
+	res, err := newSample.UpdateSample()
+	if err != nil {
+		c.String(http.StatusBadRequest, "Cannot update sample width id %s", id)
+	} else {
+		fmt.Printf("res %v: ", res)
+		c.String(http.StatusOK, "Success!")
+	}
+
+}
+
+func getSampleByID(c *gin.Context) {
+	id := c.Param("id")
+	sample, err := Models.GetSample(id)
+
+	if err != nil {
+		c.String(http.StatusBadRequest, "Sample with id %s does not exist", id)
+	} else {
+		fmt.Printf("sample %v: ", sample)
+		c.IndentedJSON(http.StatusOK, sample)
+	}
+}
+
+func uploadForm(c *gin.Context) {
+	form, err := c.MultipartForm()
+
+	if err != nil {
+		c.String(http.StatusBadRequest, "get form err: %s", err.Error())
+		return
+	}
+
+	files := form.File["files"]
+	title := c.PostForm("title")
+	content := c.PostForm("content")
+	photoArrayAsString := ""
+
+	for _, file := range files {
+		filename := filepath.Base(file.Filename)
+		relativeFilePath := "upload-images/" + filename
+		photoArrayAsString += relativeFilePath + ","
+		// TODO:
+		// check file exist before upload
+		// sanitize file name before upload
+		if err := c.SaveUploadedFile(file, "./"+relativeFilePath); err != nil {
+			c.String(http.StatusBadRequest, "upload file err: %s", err.Error())
+			return
+		}
+	}
+
+	photoArrayAsString = strings.TrimRight(photoArrayAsString, ",")
+
+	newSample := Models.Sample{
+		Title:   title,
+		Content: content,
 		Photo:   photoArrayAsString,
 	}
 
@@ -101,9 +185,9 @@ func uploadFile(c *gin.Context) {
 }
 
 func getSamples(c *gin.Context) {
-	ss, err := Models.GetSamples()
+	samples, err := Models.GetSamples()
 	if err == nil {
-		c.IndentedJSON(http.StatusOK, ss)
+		c.IndentedJSON(http.StatusOK, samples)
 	} else {
 		panic(err)
 	}

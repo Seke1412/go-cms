@@ -4,7 +4,6 @@ import (
 	"database/sql"
 	"fmt"
 	"log"
-	"strconv"
 	"time"
 )
 
@@ -17,7 +16,22 @@ type Sample struct {
 	UpdatedAt time.Time `json:"updated_at"`
 }
 
-func GetSample(id int) (sample Sample, err error) {
+func (sample *Sample) UpdateSample() (res sql.Result, err error) {
+	res, err = DB.Exec(`
+		UPDATE "samples"
+		SET "title" = $2, "content" = $3 , "photo" = $4, "updated_at" = now()
+		WHERE "id" = $1
+	`, sample.Id, sample.Title, sample.Content, sample.Photo)
+
+	if err != nil {
+		msg := "Cannot update sample with id: " + sample.Id
+		LogMessage("Cannot update sample with info: " + msg)
+	}
+
+	return
+}
+
+func GetSample(id string) (sample Sample, err error) {
 	sample = Sample{}
 	err = DB.QueryRow(`
 		SELECT id, title, content, photo
@@ -31,7 +45,7 @@ func GetSample(id int) (sample Sample, err error) {
 		case err == sql.ErrNoRows:
 			fmt.Println(`No sample with id:`, id)
 		case err != nil:
-			LogMessage("Error when try to GetSample with id: " + strconv.Itoa(id))
+			LogMessage("Error when try to GetSample with id: " + id)
 		}
 	}
 	return
