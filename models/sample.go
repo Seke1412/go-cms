@@ -83,7 +83,7 @@ func GetSamples() (samples []Sample, err error) {
 	return
 }
 
-func (sample *Sample) Create() (err error) {
+func (sample *Sample) Create() (id string, err error) {
 	statement := `INSERT INTO "samples"
 		("title", "content", "photo", "created_at", "updated_at") 
 		values ($1, $2, $3, now(), now()) returning id`
@@ -99,15 +99,17 @@ func (sample *Sample) Create() (err error) {
 		LogMessage("Cannot create sample with info: " + msg)
 	}
 
+	id = sample.Id
+
 	return
 }
 
 // Consider very carefully when use this method. It will remove record in database
-func (sample *Sample) HardDelete() (res sql.Result, err error) {
+func HardDelete(id string) (res sql.Result, err error) {
 	res, err = DB.Exec(`
-		DELETE FROM "Samples"
-		WHERE "id" = $1
-	`, sample.Id)
+		DELETE FROM "samples"
+		WHERE "id"=$1
+	`, id)
 
 	return
 }
